@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#0b0f19" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>PC Profit — Учет сборок ПК и прибыли</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <a href="#/" class="brand" id="brand-home">
+        <div class="brand-icon">PC</div>
+        <div class="brand-text">
+          <h1>PC Profit</h1>
+          <span>Калькулятор сборок и чистой прибыли</span>
+        </div>
+      </a>
+
+      <nav class="main-nav" aria-label="Разделы">
+        <a href="#/" class="nav-tab active" id="nav-tab-pcs">🖥️ Сборки ПК <span class="nav-count" id="nav-count-pcs">0</span></a>
+        <a href="#/parts" class="nav-tab" id="nav-tab-parts">📦 Перепродажа железа <span class="nav-count" id="nav-count-parts">0</span></a>
+      </nav>
+
+      <div class="header-actions">
+        <span class="sync-badge local" id="sync-badge" title="Режим хранения данных">
+          <span class="sync-dot"></span>
+          <span id="sync-text">Локально</span>
+        </span>
+
+        <select class="currency-select" id="currency-select" aria-label="Валюта">
+          <option value="₽">₽ RUB</option>
+          <option value="₸">₸ KZT</option>
+          <option value="$">$ USD</option>
+          <option value="€">€ EUR</option>
+          <option value="BYN">BYN</option>
+          <option value="₴">₴ UAH</option>
+        </select>
+
+        <button type="button" class="btn btn-sm hide-mobile" id="btn-export" title="Скачать резервную копию JSON">
+          Экспорт
+        </button>
+        <button type="button" class="btn btn-sm hide-mobile" id="btn-import" title="Загрузить резервную копию JSON">
+          Импорт
+        </button>
+        <input type="file" id="import-file-input" accept="application/json,.json" class="hidden" />
+
+        <button type="button" class="btn" id="btn-new-part-top">
+          + Железо
+        </button>
+        <button type="button" class="btn btn-primary" id="btn-new-pc">
+          + Новый ПК
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <!-- Главная страница -->
+    <section id="view-home">
+      <div class="demo-banner hidden" id="demo-banner">
+        <div>
+          <strong>Демо-сборки для примера.</strong> Вы можете отредактировать их или очистить перед началом своего учета.
+        </div>
+        <div class="demo-banner-actions">
+          <button type="button" class="btn btn-sm btn-danger" id="btn-clear-demo">Очистить примеры</button>
+          <button type="button" class="btn btn-sm btn-ghost" id="btn-dismiss-demo">Скрыть</button>
+        </div>
+      </div>
+
+      <div class="kpi-dashboard" id="kpi-dashboard">
+        <div class="kpi-card kpi-hero" id="kpi-hero-card">
+          <div class="kpi-label">
+            <span>Заработано чистыми</span>
+            <span class="kpi-pill positive" id="kpi-sold-badge">0 продано</span>
+          </div>
+          <div class="kpi-value" id="kpi-clean-profit">0 ₽</div>
+          <div class="kpi-sub">
+            <span id="kpi-breakdown-pcs">🖥️ ПК: 0 ₽</span>
+            <span id="kpi-breakdown-parts">📦 Железо: 0 ₽</span>
+          </div>
+          <div class="kpi-sub">
+            <span id="kpi-avg-profit">Средняя с 1 ПК: 0 ₽</span>
+            <span id="kpi-avg-roi">Маржа: 0%</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Ожидаемая прибыль</span>
+            <span class="kpi-pill" id="kpi-active-count">0 активных</span>
+          </div>
+          <div class="kpi-value" id="kpi-projected-profit">0 ₽</div>
+          <div class="kpi-sub">
+            <span>По ПК «В продаже» и «В сборке»</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Общая выручка</span>
+          </div>
+          <div class="kpi-value" id="kpi-revenue">0 ₽</div>
+          <div class="kpi-sub">
+            <span>Сумма продаж всех проданных ПК</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Расходы и вложения</span>
+          </div>
+          <div class="kpi-value" id="kpi-invested">0 ₽</div>
+          <div class="kpi-sub">
+            <span id="kpi-sold-cost">Себестоимость проданных: 0 ₽</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls-bar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="search" id="search-input" placeholder="Поиск по названию, процессору, видеокарте..." />
+        </div>
+
+        <div class="filter-group" id="status-filters">
+          <button type="button" class="filter-pill active" data-filter="all">Все</button>
+          <button type="button" class="filter-pill" data-filter="sold">Проданы ✅</button>
+          <button type="button" class="filter-pill" data-filter="for_sale">В продаже 🏷️</button>
+          <button type="button" class="filter-pill" data-filter="building">В сборке 🔧</button>
+        </div>
+
+        <select class="sort-select" id="sort-select" aria-label="Сортировка">
+          <option value="newest">Сначала новые</option>
+          <option value="profit_desc">По прибыли (убыв.)</option>
+          <option value="cost_desc">По стоимости сборки</option>
+        </select>
+      </div>
+
+      <div class="mobile-only-flex" id="mobile-backup-row">
+        <button type="button" class="btn btn-sm" id="btn-export-mobile">Экспорт JSON</button>
+        <button type="button" class="btn btn-sm" id="btn-import-mobile">Импорт JSON</button>
+      </div>
+
+      <div class="pc-grid" id="pc-list"></div>
+    </section>
+
+    <!-- Отдельная страница каждого ПК -->
+    <section id="view-pc" class="hidden">
+      <div class="pc-topbar">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <a href="#/" class="btn">← Назад ко всем ПК</a>
+          <span class="kpi-pill" id="pc-route-badge">#/pc/</span>
+        </div>
+
+        <div class="pc-topbar-actions">
+          <button type="button" class="btn btn-sm" id="btn-copy-specs">📋 Скопировать спеки</button>
+          <button type="button" class="btn btn-sm" id="btn-duplicate-pc">📑 Дублировать</button>
+          <button type="button" class="btn btn-sm btn-danger" id="btn-delete-pc">🗑️ Удалить ПК</button>
+        </div>
+      </div>
+
+      <div class="pc-detail-layout">
+        <!-- Левая колонка: информация о сборке и калькулятор комплектующих -->
+        <div>
+          <div class="card-panel pc-meta-panel">
+            <div class="form-grid">
+              <div class="form-field full">
+                <label class="form-label" for="pc-name-input">Название ПК / сборки</label>
+                <input type="text" id="pc-name-input" class="input input-lg" placeholder="Например: Игровой ПК Ryzen 5 5600 + RTX 3060 Ti" />
+              </div>
+
+              <div class="form-field full">
+                <span class="form-label">Статус сборки</span>
+                <div class="status-segmented" id="pc-status-segmented">
+                  <button type="button" class="status-seg-btn" data-status="building">🔧 В сборке</button>
+                  <button type="button" class="status-seg-btn" data-status="for_sale">🏷️ В продаже</button>
+                  <button type="button" class="status-seg-btn" data-status="sold">✅ Продан</button>
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label class="form-label" for="pc-created-input">Дата сборки</label>
+                <input type="date" id="pc-created-input" class="input" />
+              </div>
+
+              <div class="form-field">
+                <label class="form-label" for="pc-sold-date-input">Дата продажи</label>
+                <input type="date" id="pc-sold-date-input" class="input" />
+              </div>
+
+              <div class="form-field full">
+                <label class="form-label" for="pc-notes-input">Заметки (ссылка на объявление, условия, тесты)</label>
+                <textarea id="pc-notes-input" class="input" placeholder="Например: Температура в стресс-тесте 65°C, продан на Авито..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-panel">
+            <div class="calc-header">
+              <div>
+                <h2>Расчет комплектующих ПК</h2>
+                <span class="calc-count" id="comp-count-label">0 позиций</span>
+              </div>
+              <button type="button" class="btn btn-sm btn-primary" id="btn-add-comp-top">+ Деталь</button>
+            </div>
+
+            <div class="comp-table-head">
+              <div>Категория</div>
+              <div>Комплектующее / Модель</div>
+              <div>Где куплено</div>
+              <div>Кол-во</div>
+              <div>Цена за шт.</div>
+              <div style="text-align: right;">Сумма</div>
+              <div></div>
+            </div>
+
+            <div class="comp-list" id="comp-list"></div>
+
+            <div class="calc-footer-actions">
+              <button type="button" class="btn btn-primary" id="btn-add-comp">+ Добавить комплектующее</button>
+              <button type="button" class="btn" id="btn-add-extra">+ Доп. расход (доставка, термопаста)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Правая колонка: Финансы и своя прибыль именно для этого ПК -->
+        <aside class="finance-sidebar">
+          <div class="card-panel" style="display: flex; flex-direction: column; gap: 14px;">
+            <h2 style="margin: 0; font-size: 18px;">Финансы этого ПК</h2>
+
+            <div class="finance-box">
+              <span class="finance-box-label">За сколько собран (Себестоимость)</span>
+              <span class="finance-box-value" id="pc-assembly-cost">0 ₽</span>
+              <span class="finance-box-sub" id="pc-parts-summary">Сумма всех комплектующих и расходов</span>
+            </div>
+
+            <div class="finance-box">
+              <label class="finance-box-label" for="pc-sale-price-input">За сколько продан (или план цены)</label>
+              <input
+                type="number"
+                inputmode="decimal"
+                step="any"
+                min="0"
+                id="pc-sale-price-input"
+                class="input sale-price-input"
+                placeholder="0"
+              />
+              <div class="markup-buttons" title="Быстро рассчитать цену продажи с наценкой">
+                <button type="button" class="markup-btn" data-markup="15">+15%</button>
+                <button type="button" class="markup-btn" data-markup="20">+20%</button>
+                <button type="button" class="markup-btn" data-markup="25">+25%</button>
+                <button type="button" class="markup-btn" data-markup="30">+30%</button>
+              </div>
+            </div>
+
+            <div class="finance-box highlight-profit" id="pc-profit-box">
+              <span class="finance-box-label" id="pc-profit-label">Своя чистая прибыль</span>
+              <span class="finance-box-value" id="pc-net-profit">0 ₽</span>
+              <span class="finance-box-sub" id="pc-roi-text">Наценка / ROI: 0%</span>
+            </div>
+
+            <button type="button" class="btn btn-success" id="btn-mark-sold">
+              ✅ Зафиксировать продажу в общую прибыль
+            </button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Страница перепродажи отдельного железа -->
+    <section id="view-parts" class="hidden">
+      <div class="kpi-dashboard" id="parts-kpi-dashboard">
+        <div class="kpi-card kpi-hero" id="parts-kpi-hero">
+          <div class="kpi-label">
+            <span>Чистая прибыль с железа</span>
+            <span class="kpi-pill positive" id="parts-sold-badge">0 продано</span>
+          </div>
+          <div class="kpi-value" id="parts-clean-profit">0 ₽</div>
+          <div class="kpi-sub">
+            <span id="parts-avg-profit">Средняя с 1 позиции: 0 ₽</span>
+            <span id="parts-avg-roi">Маржа: 0%</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Ожидаемая прибыль</span>
+            <span class="kpi-pill" id="parts-active-badge">0 в продаже</span>
+          </div>
+          <div class="kpi-value" id="parts-projected-profit">0 ₽</div>
+          <div class="kpi-sub">
+            <span>По позициям «В продаже» с указанной ценой</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Выручка с железа</span>
+          </div>
+          <div class="kpi-value" id="parts-revenue">0 ₽</div>
+          <div class="kpi-sub">
+            <span>Сумма продаж проданных комплектующих</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Вложено в железо сейчас</span>
+          </div>
+          <div class="kpi-value" id="parts-invested">0 ₽</div>
+          <div class="kpi-sub">
+            <span id="parts-sold-cost">Закуп проданного: 0 ₽</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls-bar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="search" id="parts-search-input" placeholder="Поиск по названию, категории, заметке..." />
+        </div>
+
+        <div class="filter-group" id="parts-status-filters">
+          <button type="button" class="filter-pill active" data-filter="all">Все</button>
+          <button type="button" class="filter-pill" data-filter="sold">Продано ✅</button>
+          <button type="button" class="filter-pill" data-filter="for_sale">В продаже 📦</button>
+        </div>
+
+        <select class="sort-select" id="parts-sort-select" aria-label="Сортировка железа">
+          <option value="newest">Сначала новые</option>
+          <option value="profit_desc">По прибыли (убыв.)</option>
+          <option value="cost_desc">По цене закупки</option>
+        </select>
+
+        <button type="button" class="btn btn-primary" id="btn-add-part">+ Добавить железо</button>
+      </div>
+
+      <div class="parts-list" id="parts-list"></div>
+    </section>
+  </main>
+
+  <!-- Мобильная закрепленная панель на странице ПК -->
+  <div class="mobile-sticky-bar hidden" id="mobile-sticky-bar">
+    <div class="mobile-bar-item">
+      <span class="mobile-bar-label">Собран за</span>
+      <span class="mobile-bar-val" id="mobile-bar-cost">0 ₽</span>
+    </div>
+    <div class="mobile-bar-item">
+      <span class="mobile-bar-label">Продан за</span>
+      <span class="mobile-bar-val" id="mobile-bar-sale">0 ₽</span>
+    </div>
+    <div class="mobile-bar-item">
+      <span class="mobile-bar-label">Прибыль</span>
+      <span class="mobile-bar-val val-positive" id="mobile-bar-profit">0 ₽</span>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
